@@ -1,0 +1,7 @@
+{
+    "VAULT_A": {
+        "IdpInitiatedUrl": "https://idp.example.com/saml/login?vault=VAULT_A",
+        "CyberArkSamlLogonUrl": "https://cyberark-vaulta.example.com/api/saml/logon",
+        "CyberArkGetPasswordValueUrl": "https://cyberark-vaulta.example.com/api/passwords/get"
+    }
+}

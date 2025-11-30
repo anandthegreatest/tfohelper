@@ -1,0 +1,7 @@
+{
+    "ReportingBaseUrl": "https://reporting.example.com",
+    "ReportingPath": "/api/tfo-helper/report",
+    "RequireHttps": false,
+    "RetryCount": 3,
+    "RetryDelaySeconds": 2
+}
