@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,11 +11,21 @@ using System.Net.Http;
 
 namespace TfoHelper.App
 {
+    /// <summary>
+    /// Interaction logic for App.xaml.
+    /// Manages application startup, dependency injection configuration, and global exception handling.
+    /// </summary>
     public partial class App : Application
     {
         private IServiceProvider _serviceProvider;
         private ILogger<App> _logger;
 
+        /// <summary>
+        /// Handles the startup event of the application.
+        /// Configures services and shows the main window.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The startup event arguments.</param>
         private void Application_Startup(object sender, StartupEventArgs e)
         {
             // Global Exception Handling
@@ -33,6 +43,10 @@ namespace TfoHelper.App
             mainWindow.Show();
         }
 
+        /// <summary>
+        /// Configures the dependency injection container with application services.
+        /// </summary>
+        /// <param name="services">The service collection to add services to.</param>
         private void ConfigureServices(IServiceCollection services)
         {
             // Configuration
@@ -67,6 +81,11 @@ namespace TfoHelper.App
             services.AddTransient<MainWindow>();
         }
 
+        /// <summary>
+        /// Handles unhandled exceptions thrown on the UI thread.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The exception event arguments.</param>
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             _logger?.LogCritical(e.Exception, "Unhandled Dispatcher Exception");
@@ -75,6 +94,11 @@ namespace TfoHelper.App
             Shutdown();
         }
 
+        /// <summary>
+        /// Handles unhandled exceptions thrown in the current AppDomain (non-UI thread).
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The exception event arguments.</param>
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             var ex = e.ExceptionObject as Exception;
@@ -82,6 +106,11 @@ namespace TfoHelper.App
             MessageBox.Show("A critical error occurred. The application will terminate.", "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
+        /// <summary>
+        /// Handles the exit event of the application.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The exit event arguments.</param>
         private void Application_Exit(object sender, ExitEventArgs e)
         {
             _logger?.LogInformation("Application Exiting...");

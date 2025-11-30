@@ -9,11 +9,24 @@ using TfoHelper.Configuration;
 
 namespace TfoHelper.ToadAutomation
 {
+    /// <summary>
+    /// Defines the contract for automating the Toad for Oracle application.
+    /// </summary>
     public interface IToadAutomationService
     {
+        /// <summary>
+        /// Launches Toad for Oracle and attempts to log in using the provided credentials.
+        /// </summary>
+        /// <param name="tns">The TNS string or database alias.</param>
+        /// <param name="username">The database username.</param>
+        /// <param name="password">The database password.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating success or failure.</returns>
         Task<bool> LaunchAndLoginAsync(string tns, string username, string password);
     }
 
+    /// <summary>
+    /// Implements <see cref="IToadAutomationService"/> using UI Automation (UIA) to control Toad for Oracle.
+    /// </summary>
     public class ToadAutomationService : IToadAutomationService
     {
         private readonly IConfigurationService _config;
@@ -26,12 +39,24 @@ namespace TfoHelper.ToadAutomation
         [DllImport("user32.dll")]
         static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ToadAutomationService"/> class.
+        /// </summary>
+        /// <param name="config">The configuration service for accessing Toad settings.</param>
+        /// <param name="logger">The logger for logging automation activities.</param>
         public ToadAutomationService(IConfigurationService config, ILogger<ToadAutomationService> logger)
         {
             _config = config;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Launches Toad for Oracle and attempts to log in using the provided credentials.
+        /// </summary>
+        /// <param name="tns">The TNS string or database alias.</param>
+        /// <param name="username">The database username.</param>
+        /// <param name="password">The database password.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating success or failure.</returns>
         public async Task<bool> LaunchAndLoginAsync(string tns, string username, string password)
         {
             try
