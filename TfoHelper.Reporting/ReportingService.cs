@@ -7,18 +7,44 @@ using TfoHelper.Configuration;
 
 namespace TfoHelper.Reporting
 {
+    /// <summary>
+    /// Defines the contract for reporting automation results (success or failure) to a central service.
+    /// </summary>
     public interface IReportingService
     {
+        /// <summary>
+        /// Reports a successful automation run.
+        /// </summary>
+        /// <param name="traceId">The unique trace ID of the operation.</param>
+        /// <param name="username">The username associated with the operation.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         Task ReportSuccessAsync(string traceId, string username);
+
+        /// <summary>
+        /// Reports a failed automation run.
+        /// </summary>
+        /// <param name="traceId">The unique trace ID of the operation.</param>
+        /// <param name="username">The username associated with the operation.</param>
+        /// <param name="errorMessage">The error message describing the failure.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         Task ReportFailureAsync(string traceId, string username, string errorMessage);
     }
 
+    /// <summary>
+    /// Implements the <see cref="IReportingService"/> to send reports via HTTP POST.
+    /// </summary>
     public class ReportingService : IReportingService
     {
         private readonly HttpClient _httpClient;
         private readonly ReportingConfig _config;
         private readonly ILogger<ReportingService> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ReportingService"/> class.
+        /// </summary>
+        /// <param name="httpClient">The HTTP client used for sending reports.</param>
+        /// <param name="configService">The configuration service to access reporting settings.</param>
+        /// <param name="logger">The logger for logging service activities.</param>
         public ReportingService(HttpClient httpClient, IConfigurationService configService, ILogger<ReportingService> logger)
         {
             _httpClient = httpClient;
@@ -34,16 +60,37 @@ namespace TfoHelper.Reporting
             _httpClient.BaseAddress = new Uri(_config.ReportingBaseUrl);
         }
 
+        /// <summary>
+        /// Reports a successful automation run.
+        /// </summary>
+        /// <param name="traceId">The unique trace ID of the operation.</param>
+        /// <param name="username">The username associated with the operation.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task ReportSuccessAsync(string traceId, string username)
         {
             await SendReportAsync(traceId, "success", username, null);
         }
 
+        /// <summary>
+        /// Reports a failed automation run.
+        /// </summary>
+        /// <param name="traceId">The unique trace ID of the operation.</param>
+        /// <param name="username">The username associated with the operation.</param>
+        /// <param name="errorMessage">The error message describing the failure.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task ReportFailureAsync(string traceId, string username, string errorMessage)
         {
             await SendReportAsync(traceId, "failure", username, errorMessage);
         }
 
+        /// <summary>
+        /// Sends the report payload to the configured reporting endpoint with retry logic.
+        /// </summary>
+        /// <param name="traceId">The unique trace ID.</param>
+        /// <param name="status">The status of the operation ("success" or "failure").</param>
+        /// <param name="username">The username.</param>
+        /// <param name="errorMessage">The error message (if any).</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         private async Task SendReportAsync(string traceId, string status, string username, string errorMessage)
         {
             var report = new

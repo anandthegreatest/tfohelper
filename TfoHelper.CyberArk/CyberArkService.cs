@@ -9,18 +9,45 @@ using TfoHelper.Configuration;
 
 namespace TfoHelper.CyberArk
 {
+    /// <summary>
+    /// Defines the contract for interacting with the CyberArk API.
+    /// </summary>
     public interface ICyberArkService
     {
+        /// <summary>
+        /// Authenticates with CyberArk using a SAML response.
+        /// </summary>
+        /// <param name="samlResponse">The SAML response string obtained from the IDP.</param>
+        /// <param name="vaultName">The name of the vault to authenticate against.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the authentication token.</returns>
         Task<string> LogonAsync(string samlResponse, string vaultName);
+
+        /// <summary>
+        /// Retrieves a password from the CyberArk vault.
+        /// </summary>
+        /// <param name="token">The authentication token obtained from <see cref="LogonAsync"/>.</param>
+        /// <param name="vaultName">The name of the vault containing the password.</param>
+        /// <param name="ticketId">The ticket ID associated with the request.</param>
+        /// <param name="reason">The reason for retrieving the password. Defaults to "Automated Access".</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the retrieved password.</returns>
         Task<string> GetPasswordAsync(string token, string vaultName, string ticketId, string reason = "Automated Access");
     }
 
+    /// <summary>
+    /// Implements the <see cref="ICyberArkService"/> to interact with CyberArk via HTTP APIs.
+    /// </summary>
     public class CyberArkService : ICyberArkService
     {
         private readonly HttpClient _httpClient;
         private readonly IConfigurationService _configService;
         private readonly ILogger<CyberArkService> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CyberArkService"/> class.
+        /// </summary>
+        /// <param name="httpClient">The HTTP client used for making API requests.</param>
+        /// <param name="configService">The configuration service for accessing vault settings.</param>
+        /// <param name="logger">The logger for logging service activities.</param>
         public CyberArkService(HttpClient httpClient, IConfigurationService configService, ILogger<CyberArkService> logger)
         {
             _httpClient = httpClient;
@@ -28,6 +55,13 @@ namespace TfoHelper.CyberArk
             _logger = logger;
         }
 
+        /// <summary>
+        /// Authenticates with CyberArk using a SAML response.
+        /// </summary>
+        /// <param name="samlResponse">The SAML response string obtained from the IDP.</param>
+        /// <param name="vaultName">The name of the vault to authenticate against.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the authentication token.</returns>
+        /// <exception cref="ArgumentException">Thrown when the specified vault name is not found in the configuration.</exception>
         public async Task<string> LogonAsync(string samlResponse, string vaultName)
         {
             if (!_configService.VaultMapConfig.TryGetValue(vaultName, out var vaultEntry))
@@ -43,10 +77,6 @@ namespace TfoHelper.CyberArk
                 concurrentSession = _configService.CyberArkConfig.DefaultConcurrentSession
             };
 
-            // Using FormUrlEncodedContent as SAML Logon usually expects form data or JSON? 
-            // Prompt says "Body: samlResponse, apiUse, concurrentSession". Usually CyberArk REST API expects JSON.
-            // Let's assume JSON based on "Strongly typed HTTP clients" and typical REST API usage.
-            
             try 
             {
                 var response = await _httpClient.PostAsJsonAsync(logonUrl, payload);
@@ -63,6 +93,15 @@ namespace TfoHelper.CyberArk
             }
         }
 
+        /// <summary>
+        /// Retrieves a password from the CyberArk vault.
+        /// </summary>
+        /// <param name="token">The authentication token obtained from <see cref="LogonAsync"/>.</param>
+        /// <param name="vaultName">The name of the vault containing the password.</param>
+        /// <param name="ticketId">The ticket ID associated with the request.</param>
+        /// <param name="reason">The reason for retrieving the password. Defaults to "Automated Access".</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the retrieved password.</returns>
+        /// <exception cref="ArgumentException">Thrown when the specified vault name is not found in the configuration.</exception>
         public async Task<string> GetPasswordAsync(string token, string vaultName, string ticketId, string reason = "Automated Access")
         {
             if (!_configService.VaultMapConfig.TryGetValue(vaultName, out var vaultEntry))
@@ -90,10 +129,6 @@ namespace TfoHelper.CyberArk
                 response.EnsureSuccessStatusCode();
 
                 var password = await response.Content.ReadAsStringAsync();
-                // Password might be returned as raw string or JSON. 
-                // Prompt says "Result: Plain text password".
-                // CyberArk GetPasswordValue usually returns the password string directly if using the right endpoint, 
-                // or a JSON object. Assuming plain text based on prompt.
                 return password.Trim('"'); // Trim quotes just in case it's a JSON string
             }
             catch (Exception ex)

@@ -4,21 +4,61 @@ using Microsoft.Extensions.Configuration;
 
 namespace TfoHelper.Configuration
 {
+    /// <summary>
+    /// Defines the contract for a service that provides application configuration.
+    /// </summary>
     public interface IConfigurationService
     {
+        /// <summary>
+        /// Gets the main application settings.
+        /// </summary>
         AppSettings AppSettings { get; }
+
+        /// <summary>
+        /// Gets the CyberArk integration configuration.
+        /// </summary>
         CyberArkConfig CyberArkConfig { get; }
+
+        /// <summary>
+        /// Gets the configuration mapping for different vaults.
+        /// </summary>
         VaultMapConfig VaultMapConfig { get; }
+
+        /// <summary>
+        /// Gets the reporting service configuration.
+        /// </summary>
         ReportingConfig ReportingConfig { get; }
     }
 
+    /// <summary>
+    /// Provides access to application configuration settings loaded from JSON files.
+    /// </summary>
     public class ConfigurationService : IConfigurationService
     {
+        /// <summary>
+        /// Gets the main application settings.
+        /// </summary>
         public AppSettings AppSettings { get; private set; }
+
+        /// <summary>
+        /// Gets the CyberArk integration configuration.
+        /// </summary>
         public CyberArkConfig CyberArkConfig { get; private set; }
+
+        /// <summary>
+        /// Gets the configuration mapping for different vaults.
+        /// </summary>
         public VaultMapConfig VaultMapConfig { get; private set; }
+
+        /// <summary>
+        /// Gets the reporting service configuration.
+        /// </summary>
         public ReportingConfig ReportingConfig { get; private set; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConfigurationService"/> class.
+        /// Loads configuration from 'appsettings.json', 'cyberark.json', 'vaultmap.json', and 'reporting.json'.
+        /// </summary>
         public ConfigurationService()
         {
             var builder = new ConfigurationBuilder()
@@ -33,20 +73,6 @@ namespace TfoHelper.Configuration
             AppSettings = new AppSettings();
             configuration.Bind(AppSettings);
 
-            CyberArkConfig = new CyberArkConfig();
-            configuration.Bind(CyberArkConfig); // Assuming root level binding or specific section if structured differently. 
-            // However, the prompt implies separate files. 
-            // If they are separate files, we might need to bind them individually or add them as sources.
-            // The ConfigurationBuilder merges them. 
-            // Let's assume the JSON structure in the files matches the class structure or is at root.
-            // Based on prompt:
-            // cyberark.json: { "DefaultApiUse": ... } -> Matches CyberArkConfig properties directly.
-            // vaultmap.json: { "VAULT_A": ... } -> Matches VaultMapConfig (Dictionary).
-            // reporting.json: { "ReportingBaseUrl": ... } -> Matches ReportingConfig.
-            
-            // Since they are merged into one IConfiguration, we need to be careful about collisions or bind carefully.
-            // But here the keys seem distinct enough or we can bind to the root.
-            
             CyberArkConfig = configuration.Get<CyberArkConfig>() ?? new CyberArkConfig();
             VaultMapConfig = configuration.Get<VaultMapConfig>() ?? new VaultMapConfig();
             ReportingConfig = configuration.Get<ReportingConfig>() ?? new ReportingConfig();

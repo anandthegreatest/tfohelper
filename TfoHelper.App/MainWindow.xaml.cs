@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,6 +12,10 @@ using TfoHelper.WebViewHost;
 
 namespace TfoHelper.App
 {
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml.
+    /// Orchestrates the application flow: Login, Metadata Capture, CyberArk Auth, Toad Automation, and Reporting.
+    /// </summary>
     public partial class MainWindow : Window
     {
         private readonly IConfigurationService _config;
@@ -25,6 +29,16 @@ namespace TfoHelper.App
         private string _traceId;
         private Dictionary<string, string> _capturedMetadata;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MainWindow"/> class.
+        /// </summary>
+        /// <param name="config">The configuration service.</param>
+        /// <param name="cyberArk">The CyberArk service.</param>
+        /// <param name="toadAutomation">The Toad automation service.</param>
+        /// <param name="reporting">The reporting service.</param>
+        /// <param name="logger">The logger for MainWindow.</param>
+        /// <param name="webViewLogger">The logger for LoginWebView.</param>
+        /// <param name="loggerService">The logger service to access TraceId.</param>
         public MainWindow(
             IConfigurationService config,
             ICyberArkService cyberArk,
@@ -46,6 +60,9 @@ namespace TfoHelper.App
             InitializeWebView();
         }
 
+        /// <summary>
+        /// Initializes the WebView control and sets up event handlers.
+        /// </summary>
         private void InitializeWebView()
         {
             _loginWebView = new LoginWebView(_webViewLogger, _config.VaultMapConfig, _config.AppSettings.WebViewUserDataFolder);
@@ -58,6 +75,11 @@ namespace TfoHelper.App
             _loginWebView.Navigate(_config.AppSettings.InitialUrl);
         }
 
+        /// <summary>
+        /// Handles the metadata captured event from the WebView.
+        /// Validates the vault name and navigates to the IDP.
+        /// </summary>
+        /// <param name="metadata">The dictionary of captured metadata.</param>
         private void OnMetadataCaptured(Dictionary<string, string> metadata)
         {
             _logger.LogInformation("Metadata captured: {Metadata}", string.Join(", ", metadata.Keys));
@@ -89,6 +111,11 @@ namespace TfoHelper.App
             }
         }
 
+        /// <summary>
+        /// Handles the SAML response captured event from the WebView.
+        /// Initiates the automation flow (CyberArk Logon, Get Password, Launch Toad).
+        /// </summary>
+        /// <param name="samlResponse">The captured SAML response string.</param>
         private async void OnSamlResponseCaptured(string samlResponse)
         {
             _logger.LogInformation("SAML Response captured.");
@@ -110,6 +137,11 @@ namespace TfoHelper.App
             }
         }
 
+        /// <summary>
+        /// Orchestrates the automation steps: CyberArk Logon, Get Password, Launch Toad.
+        /// </summary>
+        /// <param name="samlResponse">The SAML response used for authentication.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ProcessAutomationFlow(string samlResponse)
         {
             var vaultName = _capturedMetadata["vaultName"];
@@ -141,6 +173,10 @@ namespace TfoHelper.App
             }
         }
 
+        /// <summary>
+        /// Displays an error message to the user.
+        /// </summary>
+        /// <param name="message">The error message to display.</param>
         private void ShowError(string message)
         {
             MessageBox.Show(message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);

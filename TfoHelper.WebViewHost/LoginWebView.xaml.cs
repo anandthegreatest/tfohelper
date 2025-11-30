@@ -10,15 +10,32 @@ using TfoHelper.Configuration;
 
 namespace TfoHelper.WebViewHost
 {
+    /// <summary>
+    /// Interaction logic for LoginWebView.xaml.
+    /// Hosts a WebView2 control to handle web-based authentication and metadata extraction.
+    /// </summary>
     public partial class LoginWebView : UserControl
     {
         private readonly ILogger _logger;
         private readonly VaultMapConfig _vaultMap;
         private string _userDataFolder;
 
+        /// <summary>
+        /// Event triggered when metadata is successfully captured from the web page.
+        /// </summary>
         public event Action<Dictionary<string, string>> MetadataCaptured;
+
+        /// <summary>
+        /// Event triggered when a SAML response is captured from network traffic.
+        /// </summary>
         public event Action<string> SamlResponseCaptured;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LoginWebView"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        /// <param name="vaultMap">The vault configuration map.</param>
+        /// <param name="userDataFolder">The folder path for WebView2 user data.</param>
         public LoginWebView(ILogger logger, VaultMapConfig vaultMap, string userDataFolder)
         {
             InitializeComponent();
@@ -28,12 +45,18 @@ namespace TfoHelper.WebViewHost
             InitializeAsync();
         }
 
-        // Default constructor for XAML designer (optional, but good practice)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LoginWebView"/> class.
+        /// Default constructor for XAML designer support.
+        /// </summary>
         public LoginWebView()
         {
             InitializeComponent();
         }
 
+        /// <summary>
+        /// Asynchronously initializes the WebView2 environment.
+        /// </summary>
         private async void InitializeAsync()
         {
             try
@@ -54,6 +77,10 @@ namespace TfoHelper.WebViewHost
             }
         }
 
+        /// <summary>
+        /// Navigates the WebView to the specified URL.
+        /// </summary>
+        /// <param name="url">The URL to navigate to.</param>
         public void Navigate(string url)
         {
             if (webView.CoreWebView2 != null)
@@ -62,6 +89,12 @@ namespace TfoHelper.WebViewHost
             }
         }
 
+        /// <summary>
+        /// Handles web messages received from the WebView content.
+        /// Expects JSON data containing metadata.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The event data.</param>
         private void CoreWebView2_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
@@ -81,6 +114,12 @@ namespace TfoHelper.WebViewHost
             }
         }
 
+        /// <summary>
+        /// Handles web resource requests to intercept specific network traffic.
+        /// Specifically looks for POST requests to 'echo.asp' to capture SAML responses.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The event data.</param>
         private async void CoreWebView2_WebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
         {
             // Check if this is the SAML response POST
@@ -117,6 +156,11 @@ namespace TfoHelper.WebViewHost
             }
         }
 
+        /// <summary>
+        /// Extracts the SAML response from the request body.
+        /// </summary>
+        /// <param name="body">The raw request body string.</param>
+        /// <returns>The decoded SAML response string, or null if not found.</returns>
         private string ExtractSamlResponse(string body)
         {
             // Simple parsing for "SAMLResponse="
@@ -133,6 +177,10 @@ namespace TfoHelper.WebViewHost
             return null;
         }
 
+        /// <summary>
+        /// Injects a JavaScript script to scrape data from the page and post it back to the host.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task InjectScrapingScriptAsync()
         {
             // Example script to scrape data and post back
