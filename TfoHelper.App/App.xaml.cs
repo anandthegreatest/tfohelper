@@ -32,15 +32,28 @@ namespace TfoHelper.App
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             DispatcherUnhandledException += App_DispatcherUnhandledException;
 
-            var serviceCollection = new ServiceCollection();
-            ConfigureServices(serviceCollection);
-            _serviceProvider = serviceCollection.BuildServiceProvider();
+            try
+            {
+                var serviceCollection = new ServiceCollection();
+                ConfigureServices(serviceCollection);
+                _serviceProvider = serviceCollection.BuildServiceProvider();
 
-            _logger = _serviceProvider.GetRequiredService<ILogger<App>>();
-            _logger.LogInformation("Application Starting...");
+                _logger = _serviceProvider.GetRequiredService<ILogger<App>>();
+                _logger.LogInformation("Application Starting...");
 
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Show();
+                var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+                mainWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Startup failed: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
+                if (ex.InnerException != null)
+                {
+                    errorMessage += $"\n\nInner Exception: {ex.InnerException.Message}";
+                }
+                MessageBox.Show(errorMessage, "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown();
+            }
         }
 
         /// <summary>
@@ -54,20 +67,11 @@ namespace TfoHelper.App
 
             // Logging
             services.AddSingleton<LoggerService>();
-            services.AddSingleton<ILoggerProvider, FileLoggerProvider>();
             services.AddLogging(builder =>
             {
-                builder.ClearProviders(); // Remove default providers if any
-                // We need to register our provider manually or via builder
-                // Since we registered ILoggerProvider, AddLogging should pick it up if we use AddProvider?
-                // Or we can just use our LoggerService directly.
-                // Let's use the standard way:
-                var sp = services.BuildServiceProvider(); // Temporary SP to get config/logger service? No, circular dependency.
-                // We can register the provider instance later or use a factory.
+                builder.ClearProviders();
+                builder.Services.AddSingleton<ILoggerProvider, FileLoggerProvider>();
             });
-            // Re-register logging correctly
-            services.AddSingleton<ILoggerFactory, LoggerFactory>(sp => new LoggerFactory(new[] { sp.GetRequiredService<ILoggerProvider>() }));
-            services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
 
             // Http Client
             services.AddHttpClient();
@@ -89,7 +93,14 @@ namespace TfoHelper.App
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             _logger?.LogCritical(e.Exception, "Unhandled Dispatcher Exception");
-            MessageBox.Show("An unexpected error occurred. Please contact support.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            
+            string message = $"An unexpected error occurred: {e.Exception.Message}";
+            if (_logger == null)
+            {
+                message += "\n\n(Logger was not initialized)";
+            }
+            
+            MessageBox.Show(message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
             Shutdown();
         }
@@ -103,7 +114,18 @@ namespace TfoHelper.App
         {
             var ex = e.ExceptionObject as Exception;
             _logger?.LogCritical(ex, "Unhandled AppDomain Exception");
-            MessageBox.Show("A critical error occurred. The application will terminate.", "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            
+            string message = "A critical error occurred.";
+            if (ex != null)
+            {
+                message += $" {ex.Message}";
+            }
+             if (_logger == null)
+            {
+                message += "\n\n(Logger was not initialized)";
+            }
+
+            MessageBox.Show(message, "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         /// <summary>

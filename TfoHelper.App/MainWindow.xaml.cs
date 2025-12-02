@@ -56,69 +56,52 @@ namespace TfoHelper.App
             _logger = logger;
             _webViewLogger = webViewLogger;
             _traceId = loggerService.GetTraceId();
+            
+            Loaded += MainWindow_Loaded;
+        }
 
-            InitializeWebView();
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await InitializeWebViewAsync();
         }
 
         /// <summary>
         /// Initializes the WebView control and sets up event handlers.
         /// </summary>
-        private void InitializeWebView()
+        private async Task InitializeWebViewAsync()
         {
-            _loginWebView = new LoginWebView(_webViewLogger, _config.VaultMapConfig, _config.AppSettings.WebViewUserDataFolder);
-            _loginWebView.MetadataCaptured += OnMetadataCaptured;
-            _loginWebView.SamlResponseCaptured += OnSamlResponseCaptured;
-            
-            WebViewContainer.Children.Add(_loginWebView);
-            
-            _logger.LogInformation("Navigating to Initial URL: {Url}", _config.AppSettings.InitialUrl);
-            _loginWebView.Navigate(_config.AppSettings.InitialUrl);
-        }
-
-        /// <summary>
-        /// Handles the metadata captured event from the WebView.
-        /// Validates the vault name and navigates to the IDP.
-        /// </summary>
-        /// <param name="metadata">The dictionary of captured metadata.</param>
-        private void OnMetadataCaptured(Dictionary<string, string> metadata)
-        {
-            _logger.LogInformation("Metadata captured: {Metadata}", string.Join(", ", metadata.Keys));
-            _capturedMetadata = metadata;
-
-            // Inject scraping script if not already done by the page interaction? 
-            // The prompt says "Inject JavaScript to scrape... Post data back".
-            // Assuming the page interaction triggers the post message or we inject a script that listens.
-            // In LoginWebView we have InjectScrapingScriptAsync.
-            // But here we received the metadata, so scraping is done.
-            
-            // Validate Vault
-            if (metadata.TryGetValue("vaultName", out var vaultName))
+            try
             {
-                if (_config.VaultMapConfig.TryGetValue(vaultName, out var vaultEntry))
-                {
-                    _logger.LogInformation("Vault '{VaultName}' found. Navigating to IDP.", vaultName);
-                    // Navigate to IdpInitiatedUrl
-                    _loginWebView.Navigate(vaultEntry.IdpInitiatedUrl);
-                }
-                else
-                {
-                    ShowError($"Vault '{vaultName}' not configured.");
-                }
+                _loginWebView = new LoginWebView(_webViewLogger, _config.VaultMapConfig, _config.AppSettings.WebViewUserDataFolder);
+                // _loginWebView.MetadataCaptured += OnMetadataCaptured; // Removed as per new flow
+                _loginWebView.SamlResponseCaptured += OnSamlResponseCaptured;
+                
+                WebViewContainer.Children.Add(_loginWebView);
+                
+                await _loginWebView.InitializeWebView2Async();
+
+                _logger.LogInformation("Navigating to Initial URL: {Url}", _config.AppSettings.InitialUrl);
+                _loginWebView.Navigate(_config.AppSettings.InitialUrl);
             }
-            else
+            catch (Exception ex)
             {
-                ShowError("Vault name not found in captured metadata.");
+                _logger.LogError(ex, "Failed to initialize WebView.");
+                ShowError($"Failed to initialize WebView: {ex.Message}");
             }
         }
+
+
 
         /// <summary>
         /// Handles the SAML response captured event from the WebView.
         /// Initiates the automation flow (CyberArk Logon, Get Password, Launch Toad).
         /// </summary>
         /// <param name="samlResponse">The captured SAML response string.</param>
-        private async void OnSamlResponseCaptured(string samlResponse)
+        /// <param name="metadata">The captured cookies/metadata.</param>
+        private async void OnSamlResponseCaptured(string samlResponse, Dictionary<string, string> metadata)
         {
             _logger.LogInformation("SAML Response captured.");
+            _capturedMetadata = metadata; // Update metadata from cookies
             
             // UI Update
             WebViewContainer.Visibility = Visibility.Collapsed;
@@ -144,10 +127,15 @@ namespace TfoHelper.App
         /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ProcessAutomationFlow(string samlResponse)
         {
-            var vaultName = _capturedMetadata["vaultName"];
+            // Map keys from cookies or fallback
+            var vaultName = _capturedMetadata.ContainsKey("vaultName") ? _capturedMetadata["vaultName"] : throw new Exception("vaultName not found in cookies.");
             var ticketId = _capturedMetadata.ContainsKey("TicketId") ? _capturedMetadata["TicketId"] : "N/A";
-            var username = _capturedMetadata["username"];
-            var tns = _capturedMetadata["TNSString"];
+            
+            // AccountId usually maps to username in this context, or we use explicit username if present
+            var username = _capturedMetadata.ContainsKey("AccountId") ? _capturedMetadata["AccountId"] : (_capturedMetadata.ContainsKey("username") ? _capturedMetadata["username"] : throw new Exception("AccountId/username not found."));
+            
+            // objectName usually maps to TNS string
+            var tns = _capturedMetadata.ContainsKey("objectName") ? _capturedMetadata["objectName"] : (_capturedMetadata.ContainsKey("TNSString") ? _capturedMetadata["TNSString"] : throw new Exception("objectName/TNSString not found."));
 
             // 1. Logon
             var token = await _cyberArk.LogonAsync(samlResponse, vaultName);

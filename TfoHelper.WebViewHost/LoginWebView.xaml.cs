@@ -27,8 +27,9 @@ namespace TfoHelper.WebViewHost
 
         /// <summary>
         /// Event triggered when a SAML response is captured from network traffic.
+        /// Returns the SAML response and captured cookies (metadata).
         /// </summary>
-        public event Action<string> SamlResponseCaptured;
+        public event Action<string, Dictionary<string, string>> SamlResponseCaptured;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LoginWebView"/> class.
@@ -42,7 +43,6 @@ namespace TfoHelper.WebViewHost
             _logger = logger;
             _vaultMap = vaultMap;
             _userDataFolder = userDataFolder;
-            InitializeAsync();
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace TfoHelper.WebViewHost
         /// <summary>
         /// Asynchronously initializes the WebView2 environment.
         /// </summary>
-        private async void InitializeAsync()
+        public async Task InitializeWebView2Async()
         {
             try
             {
@@ -142,9 +142,25 @@ namespace TfoHelper.WebViewHost
                             // Body is likely URL encoded: SAMLResponse=...
                             // We need to parse it.
                             var samlResponse = ExtractSamlResponse(body);
+                            
                             if (!string.IsNullOrEmpty(samlResponse))
                             {
-                                SamlResponseCaptured?.Invoke(samlResponse);
+                                // Capture cookies
+                                var cookieManager = webView.CoreWebView2.CookieManager;
+                                var cookies = await cookieManager.GetCookiesAsync(request.Uri);
+                                var metadata = new Dictionary<string, string>();
+
+                                foreach (var cookie in cookies)
+                                {
+                                    if (cookie.Name.Equals("AccountId", StringComparison.OrdinalIgnoreCase) ||
+                                        cookie.Name.Equals("vaultName", StringComparison.OrdinalIgnoreCase) ||
+                                        cookie.Name.Equals("objectName", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        metadata[cookie.Name] = cookie.Value;
+                                    }
+                                }
+
+                                SamlResponseCaptured?.Invoke(samlResponse, metadata);
                             }
                         }
                     }

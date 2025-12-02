@@ -62,7 +62,7 @@ namespace TfoHelper.Configuration
         public ConfigurationService()
         {
             var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile("cyberark.json", optional: false, reloadOnChange: true)
                 .AddJsonFile("vaultmap.json", optional: false, reloadOnChange: true)
